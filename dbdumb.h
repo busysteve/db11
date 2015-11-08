@@ -7,6 +7,10 @@
 #include <vector>
 #include <string>
 #include <atomic>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <utility>
 
 using namespace std;
 
@@ -46,6 +50,11 @@ public:
 		return ++idx_id;
 	}
 
+	void clear()
+	{
+		idx.clear();
+	}
+
 private:
 	map< tuple<string, string, string, string, string, string>, unsigned long > idx;
 	atomic<unsigned long> idx_id;
@@ -79,17 +88,23 @@ public:
 		return table[id];
 	}
 
-	id_t insert_row( row_t data, int ix = 0 )
+	id_t insert_row( row_t data, unsigned int ix )
 	{
 		string temp("");
 
+		if( data.size() < ix )
+			return 0L;
+
+		//cout << data[0] << " " << data.size() << endl;
+		//cout << data[1] << " " << data.size() << endl;
+
 		auto tup = make_tuple( 
-					 data[0], 
-				(ix > 1) ? data[1] : temp, 
-				(ix > 2) ? data[2] : temp, 
-				(ix > 3) ? data[3] : temp, 
-				(ix > 4) ? data[4] : temp, 
-				(ix > 5) ? data[5] : temp  );
+				(ix > 0) ? data[0] : temp, 
+				(ix > 1) ? data[1].c_str() : temp, 
+				(ix > 2) ? data[2].c_str() : temp, 
+				(ix > 3) ? data[3].c_str() : temp, 
+				(ix > 4) ? data[4].c_str() : temp, 
+				(ix > 5) ? data[5].c_str() : temp  );
 		id_t id = idx.insert_id( tup );
 		table[id] = data;
 		return id;
@@ -111,6 +126,65 @@ public:
 
 		return id;
 	}
+
+	void store( const char * filename )
+	{
+		ofstream ofs ( filename, std::ofstream::binary );
+
+		for( auto row : table )
+		{
+			string str;
+
+			for( auto field : row.second )
+			{
+				str += field + '~';
+			}
+
+			str[str.length()-1] = '\n';
+
+			ofs << str;
+		}
+
+		ofs << flush;
+		
+	}
+
+	void load( const char * filename, unsigned int ix )
+	{
+		string line;
+
+		clear();
+
+		ifstream ifs ( filename, std::ifstream::binary);
+		istringstream iss;
+		row_t row;
+
+		while( getline( ifs, line, '\n' ) )
+		{
+			row.clear();
+			iss.str( line );
+			string word;
+			while( getline( iss, word, '~' ) )
+			{
+				row.push_back(word);
+			}
+
+			iss.clear();		
+
+			if( row.size() > ix )
+			{
+				insert_row( row, ix );
+			}
+		}
+	}
+
+	void clear()
+	{
+		idx.clear();
+		table.clear();
+	}
+
+
 private:
 	map< id_t, vector<string> > table;
 	dbdumb_index idx;
