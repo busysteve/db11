@@ -20,7 +20,7 @@ int main()
 	typedef db11::idx_t key;
 	db11::id_t id;
 
-	id = table.get_row_id( key{"Bruce", "Lee"} );
+	id = table.get_id( key{"Bruce", "Lee"} );
 
 	if( id > 0 )
 	{
@@ -36,7 +36,7 @@ int main()
 	
 	table.load( "data.dat", 2 );
 
-	id = table.get_row_id( key{"Cool", "Dude"} );
+	id = table.get_id( key{"Cool", "Dude"} );
 
 	if( id > 0 )
 	{
@@ -48,7 +48,7 @@ int main()
 
 	cout << endl;
 
-	id = table.get_row_id( key{"Bruce", "Lee"} );
+	id = table.get_id( key{"Bruce", "Lee"} );
 
 	if( id > 0 )
 	{
