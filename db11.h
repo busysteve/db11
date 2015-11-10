@@ -1,5 +1,4 @@
 
-
 #ifndef __DB11
 #define __DB11
 
@@ -29,6 +28,8 @@ public:
 	class result;
 	class table;
 	class index;
+	class inner;
+	class left;
 
 
 	class index
@@ -79,6 +80,7 @@ public:
 	class result
 	{
 		friend table;
+		friend inner;
 
 		void add_row( row_t row )
 		{
@@ -98,49 +100,49 @@ public:
 			return results[x];
 		}
 
-		result greater_than( int field, int value )
+		result greater_than( int field, const char* value )
 		{
 			result rs;
 			
 			for( auto r : results )
 			{
-				if( atoi(r[field].c_str()) > value )
+				if( atoi(r[field].c_str()) > atoi(value) )
 					rs.add_row( r );
 			}
 			return rs;
 		}
 
-		result less_than( int field, int value )
+		result less_than( int field, const char *value )
 		{
 			result rs;
 			
 			for( auto r : results )
 			{
-				if( atoi(r[field].c_str()) < value )
+				if( atoi(r[field].c_str()) < atoi(value) )
 					rs.add_row( r );
 			}
 			return rs;
 		}
 
-		result greater_than_equal( int field, int value )
+		result greater_than_equal( int field, const char * value )
 		{
 			result rs;
 			
 			for( auto r : results )
 			{
-				if( atoi(r[field].c_str()) >= value )
+				if( atoi(r[field].c_str()) >= atoi(value) )
 					rs.add_row( r );
 			}
 			return rs;
 		}
 
-		result less_than_equal( int field, int value )
+		result less_than_equal( int field, const char* value )
 		{
 			result rs;
 			
 			for( auto r : results )
 			{
-				if( atoi(r[field].c_str()) <= value )
+				if( atoi(r[field].c_str()) <= atoi(value) )
 					rs.add_row( r );
 			}
 			return rs;
@@ -153,6 +155,60 @@ public:
 
 	private:
 		result_t results;
+	};
+
+
+	class inner
+	{
+		result &_r1, &_r2;
+		vector< tuple< string, int, int > > operations;
+	public:
+		inner( result& r1, result& r2 ) 
+			: _r1(r1), _r2(r2)
+		{
+		}
+
+		inner& equal( int lv, int rv )
+		{
+			operations.push_back( make_tuple("eq", lv, rv ) );
+
+			return *this;
+		}
+
+		result join()
+		{
+			result rs;
+
+			for( auto x : _r1.results )
+			{
+				for( auto y : _r2.results )
+				{
+					for( auto z : operations )
+					{
+						row_t        row;
+						string& op = std::get<0>(z);
+						int     li = std::get<1>(z);
+						int     ri = std::get<2>(z);
+
+						if( op == "eq" )
+						{
+							if( x[li] == y[ri] )
+							{
+								for( auto a : x )
+									row.push_back( a );
+
+								for( auto b : y )
+									row.push_back( b );
+
+								rs.add_row( row );
+							}
+						}
+					}
+				}
+			}
+
+			return rs;
+		}
 	};
 
 
@@ -285,3 +341,4 @@ public:
 
 
 #endif
+
