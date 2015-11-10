@@ -1,4 +1,5 @@
 
+
 #ifndef __DB11
 #define __DB11
 
@@ -11,6 +12,7 @@
 #include <sstream>
 #include <utility>
 #include <iostream>
+#include <cstdlib>
 
 using namespace std;
 
@@ -96,6 +98,54 @@ public:
 			return results[x];
 		}
 
+		result greater_than( int field, int value )
+		{
+			result rs;
+			
+			for( auto r : results )
+			{
+				if( atoi(r[field].c_str()) > value )
+					rs.add_row( r );
+			}
+			return rs;
+		}
+
+		result less_than( int field, int value )
+		{
+			result rs;
+			
+			for( auto r : results )
+			{
+				if( atoi(r[field].c_str()) < value )
+					rs.add_row( r );
+			}
+			return rs;
+		}
+
+		result greater_than_equal( int field, int value )
+		{
+			result rs;
+			
+			for( auto r : results )
+			{
+				if( atoi(r[field].c_str()) >= value )
+					rs.add_row( r );
+			}
+			return rs;
+		}
+
+		result less_than_equal( int field, int value )
+		{
+			result rs;
+			
+			for( auto r : results )
+			{
+				if( atoi(r[field].c_str()) <= value )
+					rs.add_row( r );
+			}
+			return rs;
+		}
+
 		row_t& operator[]( unsigned int x )
 		{
 			return get_row( x );
@@ -151,7 +201,7 @@ public:
 			return id;
 		}
 
-		id_t get_row_id( idx_t key )
+		id_t get_id( idx_t key )
 		{
 			int ix = key.size();
 			string temp("");
@@ -235,4 +285,3 @@ public:
 
 
 #endif
-
