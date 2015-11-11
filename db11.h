@@ -19,11 +19,16 @@ using namespace std;
 class db11
 {
 public:
-	typedef unsigned long 			id_t;
-	typedef vector<string>    		row_t;
-	typedef multimap< id_t, row_t >	 	table_t;
-	typedef vector< row_t > 		result_t;
-	typedef row_t				idx_t;
+	typedef std::string                  field_t;
+	typedef unsigned long 			     id_t;
+	typedef std::vector<field_t>         row_t;
+	typedef row_t                        fields_t;
+	typedef std::multimap<id_t,row_t>    table_t;
+	typedef std::map< field_t, table_t > tables_t;
+	typedef std::vector<row_t>           result_t;
+	typedef std::vector<field_t>         idx_t;
+	typedef std::map< field_t, int >     columns_t;
+	typedef std::tuple<field_t, field_t, field_t, field_t, field_t, field_t, field_t> lookup_t;
 
 	class result;
 	class table;
@@ -31,6 +36,7 @@ public:
 	class inner;
 	class left;
 
+	
 
 	class index
 	{
@@ -40,7 +46,7 @@ public:
 		index() : idx_id(0L)
 		{}
 
-		id_t lookup_id( tuple<string, string, string, string, string, string> tup )
+		id_t lookup_id( lookup_t tup )
 		{
 			auto it = idx.find( tup );
 
@@ -50,7 +56,7 @@ public:
 			return it->second;
 		}
 
-		id_t insert_id( tuple<string, string, string, string, string, string> tup )
+		id_t insert_id( lookup_t tup )
 		{
 			unsigned long id=0L;
 
@@ -72,8 +78,8 @@ public:
 		}
 
 	private:
-		map< tuple<string, string, string, string, string, string>, unsigned long > idx;
-		atomic<unsigned long> idx_id;
+		map< lookup_t, id_t > idx;
+		atomic<id_t> idx_id;
 	};
 
 
@@ -82,14 +88,16 @@ public:
 		friend table;
 		friend inner;
 
+		std::string _name;
+		columns_t _fields;
+		
 		void add_row( row_t row )
 		{
 			results.push_back( row );
 		}
 
 	public:
-		typedef vector< row_t > result_t;
-
+	
 		unsigned int count()
 		{
 			return results.size();
@@ -148,10 +156,17 @@ public:
 			return rs;
 		}
 
+		unsigned int field( std::string x )
+		{
+			return _fields[x]; // TODO: exception throw here
+		}
+		
 		row_t& operator[]( unsigned int x )
 		{
 			return get_row( x );
 		}
+		
+		
 
 	private:
 		result_t results;
@@ -161,7 +176,7 @@ public:
 	class inner
 	{
 		result &_r1, &_r2;
-		vector< tuple< string, int, int > > operations;
+		std::vector< std::tuple< field_t, int, int > > operations;
 	public:
 		inner( result& r1, result& r2 ) 
 			: _r1(r1), _r2(r2)
@@ -178,14 +193,16 @@ public:
 		result join()
 		{
 			result rs;
+			bool   assign_row_to_result;
 
 			for( auto x : _r1.results )
 			{
 				for( auto y : _r2.results )
 				{
+					assign_row_to_result = false;
+
 					for( auto z : operations )
 					{
-						row_t        row;
 						string& op = std::get<0>(z);
 						int     li = std::get<1>(z);
 						int     ri = std::get<2>(z);
@@ -194,15 +211,27 @@ public:
 						{
 							if( x[li] == y[ri] )
 							{
-								for( auto a : x )
-									row.push_back( a );
-
-								for( auto b : y )
-									row.push_back( b );
-
-								rs.add_row( row );
+								assign_row_to_result = true;
+							}
+							else
+							{
+								assign_row_to_result = false;
+								break;
 							}
 						}
+					}
+
+					if( assign_row_to_result )
+					{
+						row_t  row;
+
+						for( auto a : x )
+							row.push_back( a );
+
+						for( auto b : y )
+							row.push_back( b );
+
+						rs.add_row( row );
 					}
 				}
 			}
@@ -214,17 +243,33 @@ public:
 
 	class table
 	{
+		std::map< field_t, int > _fields;
+		int                      _cols;
 	public:
 
+		table( fields_t fields )
+		{
+			int c=0;
+			for( auto f : fields )
+				_fields[f] = c++;
+			
+			_cols = c;
+		}
+	
 		result operator[]( id_t id )
 		{
-			return get_row(id);
+			return get_data(id);
 		}
 
-		result get_row( id_t id )
+		result operator[]( field_t name )
+		{
+			return get_data(_fields[name]);
+		}
+
+		result get_data( id_t id )
 		{
 			result rs;
-			auto range = table.equal_range(id);
+			auto range = _table.equal_range(id);
 
 			for( auto it = range.first; it != range.second; it++ )
 				rs.add_row( it->second );
@@ -232,27 +277,28 @@ public:
 			return rs;
 		}
 
-		id_t insert_row( row_t data, unsigned int ix )
+		id_t insert( row_t data, unsigned int ix )
 		{
-			string temp("");
+			field_t temp("");
 
 			if( data.size() < ix )
 				return 0L;
 
-			auto tup = make_tuple( 
+			auto tup = std::make_tuple( 
 					(ix > 0) ? data[0] : temp, 
 					(ix > 1) ? data[1] : temp, 
 					(ix > 2) ? data[2] : temp, 
 					(ix > 3) ? data[3] : temp, 
 					(ix > 4) ? data[4] : temp, 
-					(ix > 5) ? data[5] : temp  );
+					(ix > 5) ? data[5] : temp, 
+					(ix > 6) ? data[6] : temp  );
 
 			id_t id = idx.lookup_id( tup );
 
 			if( id == 0L )
 				id = idx.insert_id( tup );
 
-			table.insert( make_pair( id, data) );
+			_table.insert( std::make_pair( id, data) );
 
 			return id;
 		}
@@ -260,15 +306,16 @@ public:
 		id_t get_id( idx_t key )
 		{
 			int ix = key.size();
-			string temp("");
+			field_t temp("");
 
-			auto tup = make_tuple( 
-						 key[0], 
+			auto tup = std::make_tuple( 
+					(ix > 0) ? key[0] : temp, 
 					(ix > 1) ? key[1] : temp, 
 					(ix > 2) ? key[2] : temp, 
 					(ix > 3) ? key[3] : temp, 
 					(ix > 4) ? key[4] : temp, 
-					(ix > 5) ? key[5] : temp  );
+					(ix > 5) ? key[5] : temp, 
+					(ix > 6) ? key[6] : temp  );
 			id_t id = idx.lookup_id( tup );
 
 			return id;
@@ -278,7 +325,7 @@ public:
 		{
 			ofstream ofs ( filename, std::ofstream::binary );
 
-			for( auto row : table )
+			for( auto row : _table )
 			{
 				string str;
 
@@ -302,16 +349,16 @@ public:
 
 			clear();
 
-			ifstream ifs ( filename, std::ifstream::binary);
-			istringstream iss;
+			std::ifstream ifs ( filename, std::ifstream::binary);
+			std::istringstream iss;
 			row_t row;
 
-			while( getline( ifs, line, '\n' ) )
+			while( std::getline( ifs, line, '\n' ) )
 			{
 				row.clear();
 				iss.str( line );
-				string word;
-				while( getline( iss, word, '~' ) )
+				field_t word;
+				while( std::getline( iss, word, '~' ) )
 				{
 					row.push_back(word);
 				}
@@ -320,7 +367,7 @@ public:
 
 				if( row.size() > ix )
 				{
-					insert_row( row, ix );
+					insert( row, ix );
 				}
 			}
 		}
@@ -328,15 +375,29 @@ public:
 		void clear()
 		{
 			idx.clear();
-			table.clear();
+			_table.clear();
 		}
 
 
 	private:
-		table_t table;
+		table_t _table;
 		index idx;
 	};
 
+public:
+	
+	void create_table( field_t name, fields_t columns )
+	{
+		_tables[name] = new table( columns );
+	}
+	
+	table& operator[]( field_t name )
+	{
+		return *(_tables[name]);
+	}
+	
+private:
+	std::map<std::string, table*>  _tables;
 };
 
 
