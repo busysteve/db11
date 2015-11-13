@@ -14,7 +14,7 @@
 #include <iostream>
 #include <cstdlib>
 
-using namespace std;
+//using namespace std;
 
 
 class db11
@@ -82,8 +82,8 @@ public:
 		}
 
 	private:
-		map< lookup_t, id_t > idx;
-		atomic<id_t> idx_id;
+		std::map< lookup_t, id_t > idx;
+		std::atomic<id_t> idx_id;
 	};
 
 	class result
@@ -276,7 +276,7 @@ public:
 
 		inner& equal( int lv, int rv )
 		{
-			operations.push_back( make_tuple("eq", lv, rv ) );
+			operations.push_back( std::make_tuple("eq", lv, rv ) );
 
 			return *this;
 		}
@@ -298,7 +298,7 @@ public:
 
 					for( auto z : operations )
 					{
-						string& op = std::get<0>(z);
+						std::string& op = std::get<0>(z);
 						int     li = std::get<1>(z);
 						int     ri = std::get<2>(z);
 
@@ -347,9 +347,10 @@ public:
 
 	public:
 
-		table( field_t name, fields_t fields )
+		table( field_t name, id_t ix, fields_t fields )
 		{
 			_name = name;
+			_ix = ix;
 
 			int c=0;
 			for( auto f : fields )
@@ -385,22 +386,21 @@ public:
 			return rs;
 		}
 
-		id_t insert( row_t data, unsigned int ix )
+		id_t insert( row_t data  )
 		{
-			_ix = ix;
 			field_t temp("");
 
-			if( data.size() < ix )
+			if( data.size() < _ix )
 				return 0L;
 
 			auto tup = std::make_tuple( 
-					(ix > 0) ? data[0] : temp, 
-					(ix > 1) ? data[1] : temp, 
-					(ix > 2) ? data[2] : temp, 
-					(ix > 3) ? data[3] : temp, 
-					(ix > 4) ? data[4] : temp, 
-					(ix > 5) ? data[5] : temp, 
-					(ix > 6) ? data[6] : temp  );
+					(_ix > 0) ? data[0] : temp, 
+					(_ix > 1) ? data[1] : temp, 
+					(_ix > 2) ? data[2] : temp, 
+					(_ix > 3) ? data[3] : temp, 
+					(_ix > 4) ? data[4] : temp, 
+					(_ix > 5) ? data[5] : temp, 
+					(_ix > 6) ? data[6] : temp  );
 
 			id_t id = idx.lookup_id( tup );
 
@@ -430,11 +430,11 @@ public:
 			return id;
 		}
 
-		void store( ofstream& ofs )
+		void store( std::ofstream& ofs )
 		{
 			for( auto row : _table )
 			{
-				string str;
+				std::string str;
 
 				for( auto field : row.second )
 				{
@@ -447,12 +447,12 @@ public:
 			}
 
 			// "End-of-table" data-line
-			ofs << "@\n" << flush;
+			ofs << "@\n" << std::flush;
 		}
 
 		void load( std::ifstream &ifs, int ix )
 		{
-			string line;
+			std::string line;
 			std::istringstream iss;
 			row_t row;
 
@@ -474,7 +474,7 @@ public:
 
 				if( row.size() > (size_t)(ix) )
 				{
-					insert( row, ix );
+					insert( row );
 				}
 
 				iss.clear();		
@@ -495,9 +495,9 @@ public:
 
 public:
 	
-	void create_table( field_t name, fields_t columns )
+	void create_table( field_t name, id_t ix, fields_t columns )
 	{
-		_tables[name] = new table( name, columns );
+		_tables[name] = new table( name, ix, columns );
 	}
 	
 	table& operator[]( field_t name )
@@ -507,7 +507,7 @@ public:
 
 	void store( const char * filename )
 	{
-		ofstream ofs ( filename, std::ofstream::binary );
+		std::ofstream ofs ( filename, std::ofstream::binary );
 
 		for( auto t : _tables )
 		{
@@ -526,13 +526,13 @@ public:
 				t.second->store( ofs );				
 			}
 
-			ofs << flush;
+			ofs << std::flush;
 		}
 	}
 
 	void load( const char * filename )
 	{
-		string line;
+		std::string line;
 
 		_tables.clear();
 
@@ -566,7 +566,7 @@ public:
 				}
 				
 				// Create table
-				create_table( name, flds );
+				create_table( name, atoi(ix.c_str()), flds );
 
 				// Load in table data
 				_tables[name]->load( ifs, atoi(ix.c_str()) );
