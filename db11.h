@@ -495,7 +495,7 @@ public:
 
 public:
 	
-	void create_table( field_t name, id_t ix, fields_t columns )
+	void create_table( field_t name, fields_t columns, id_t ix )
 	{
 		_tables[name] = new table( name, ix, columns );
 	}
@@ -566,7 +566,7 @@ public:
 				}
 				
 				// Create table
-				create_table( name, atoi(ix.c_str()), flds );
+				create_table( name, flds, atoi(ix.c_str()) );
 
 				// Load in table data
 				_tables[name]->load( ifs, atoi(ix.c_str()) );
