@@ -3,6 +3,7 @@
 #define __DB11
 
 #include <map>
+#include <unordered_map>
 #include <tuple>
 #include <vector>
 #include <string>
@@ -20,14 +21,16 @@ class db11
 {
 public:
 	typedef std::string                  field_t;
-	typedef unsigned long 			     id_t;
+	typedef unsigned long                id_t;
 	typedef std::vector<field_t>         row_t;
 	typedef row_t                        fields_t;
 	typedef std::multimap<id_t,row_t>    table_t;
 	typedef std::map< field_t, table_t > tables_t;
 	typedef std::vector<row_t>           result_t;
 	typedef std::vector<field_t>         idx_t;
-	typedef std::map< field_t, int >     columns_t;
+	typedef std::unordered_map< field_t, int >     columns_t;
+	typedef std::map< int, field_t >     r_columns_t;  // Used for ordered reverse lookup on storage
+	typedef std::unordered_map< field_t, columns_t >  named_columns_t;
 	typedef std::tuple<field_t, field_t, field_t, field_t, field_t, field_t, field_t> lookup_t;
 
 	class result;
@@ -40,6 +43,7 @@ public:
 
 	class index
 	{
+		friend              db11;
 	public:
 
 
@@ -82,22 +86,92 @@ public:
 		atomic<id_t> idx_id;
 	};
 
-
 	class result
 	{
 		friend table;
 		friend inner;
 
-		std::string _name;
-		columns_t _fields;
+		int _cols{0};
+
+		named_columns_t    _columns;
 		
 		void add_row( row_t row )
 		{
 			results.push_back( row );
 		}
 
+		void set_column_names( std::string name, columns_t cols )
+		{
+			_cols = 0;
+			_columns.clear();
+			for( auto c : cols )
+			{
+				_columns[name][c.first] = c.second + _cols;
+				//cout << "\t" << name << "." << c.first << "\t" << _columns[name][c.first] << endl;
+			}
+			_cols += cols.size(); 
+		}
+
+		void set_column_names( named_columns_t columns )
+		{
+			_cols = 0;
+			_columns.clear();
+			add_column_names( columns );
+		}
+
+		void add_column_names( named_columns_t columns )
+		{
+			for( auto cm : columns )
+			{
+				for( auto c : cm.second )
+				{
+					_columns[cm.first][c.first] = c.second + _cols;
+					//cout << "\t" << cm.first << "." << c.first << "\t" << _columns[cm.first][c.first] << endl;
+				}
+				_cols += cm.second.size();
+			}
+
+			//_cols = col_count;
+		}
+
 	public:
+
+		field_t operator()(int row, field_t name, field_t fld )
+		{
+			return get_row( row )[field(name, fld)];
+		}
 	
+		unsigned int field( std::string fld )
+		{
+			for( auto a : _columns )
+			{
+				auto b = a.second.find( fld );
+				if( b != a.second.end() )
+				{
+					//cout << a.first << ":" << b->first << ":" << b->second << endl;
+					return b->second;
+				}
+			}
+
+			return 0;
+		}
+
+		unsigned int field( std::string name, std::string fld )
+		{
+			auto a = _columns.find( name );
+			if( a != _columns.end() )
+			{
+				auto b = a->second.find( fld );
+				if( b != a->second.end() )
+				{
+					//cout << a->first << ":" << b->first << ":" << b->second << endl;
+					return b->second;
+				}
+			}
+
+			return 0;
+		}
+
 		unsigned int count()
 		{
 			return results.size();
@@ -108,9 +182,30 @@ public:
 			return results[x];
 		}
 
+		result greater_than( const char* fld, const char* val )
+		{
+			return greater_than( field(fld), val );
+		}
+
+		result less_than( const char* fld, const char* val )
+		{
+			return less_than( field(fld), val );
+		}
+
+		result greater_than_equal( const char* fld, const char* val )
+		{
+			return greater_than_equal( field(fld), val );
+		}
+
+		result less_than_equal( const char* fld, const char* val )
+		{
+			return less_than_equal( field(fld), val );
+		}
+
 		result greater_than( int field, const char* value )
 		{
 			result rs;
+			rs.set_column_names( _columns );
 			
 			for( auto r : results )
 			{
@@ -123,6 +218,7 @@ public:
 		result less_than( int field, const char *value )
 		{
 			result rs;
+			rs.set_column_names( _columns );
 			
 			for( auto r : results )
 			{
@@ -135,6 +231,7 @@ public:
 		result greater_than_equal( int field, const char * value )
 		{
 			result rs;
+			rs.set_column_names( _columns );
 			
 			for( auto r : results )
 			{
@@ -147,6 +244,7 @@ public:
 		result less_than_equal( int field, const char* value )
 		{
 			result rs;
+			rs.set_column_names( _columns );
 			
 			for( auto r : results )
 			{
@@ -155,18 +253,11 @@ public:
 			}
 			return rs;
 		}
-
-		unsigned int field( std::string x )
-		{
-			return _fields[x]; // TODO: exception throw here
-		}
-		
+				
 		row_t& operator[]( unsigned int x )
 		{
 			return get_row( x );
 		}
-		
-		
 
 	private:
 		result_t results;
@@ -193,6 +284,10 @@ public:
 		result join()
 		{
 			result rs;
+			
+			rs.add_column_names( _r1._columns );
+			rs.add_column_names( _r2._columns );
+
 			bool   assign_row_to_result;
 
 			for( auto x : _r1.results )
@@ -243,16 +338,26 @@ public:
 
 	class table
 	{
-		std::map< field_t, int > _fields;
+		friend                   db11;
+		columns_t                _fields;
+		r_columns_t              _r_fields;
 		int                      _cols;
+		field_t                  _name;
+		id_t			 _ix;
+
 	public:
 
-		table( fields_t fields )
+		table( field_t name, fields_t fields )
 		{
+			_name = name;
+
 			int c=0;
 			for( auto f : fields )
-				_fields[f] = c++;
-			
+			{
+				_fields[f] = c;
+				_r_fields[c++] = f;
+			}
+
 			_cols = c;
 		}
 	
@@ -269,6 +374,9 @@ public:
 		result get_data( id_t id )
 		{
 			result rs;
+
+			rs.set_column_names( _name, _fields );
+
 			auto range = _table.equal_range(id);
 
 			for( auto it = range.first; it != range.second; it++ )
@@ -279,6 +387,7 @@ public:
 
 		id_t insert( row_t data, unsigned int ix )
 		{
+			_ix = ix;
 			field_t temp("");
 
 			if( data.size() < ix )
@@ -321,17 +430,15 @@ public:
 			return id;
 		}
 
-		void store( const char * filename )
+		void store( ofstream& ofs )
 		{
-			ofstream ofs ( filename, std::ofstream::binary );
-
 			for( auto row : _table )
 			{
 				string str;
 
 				for( auto field : row.second )
 				{
-					str += field + '~';
+					str += field + '\t';
 				}
 
 				str[str.length()-1] = '\n';
@@ -339,36 +446,38 @@ public:
 				ofs << str;
 			}
 
-			ofs << flush;
-		
+			// "End-of-table" data-line
+			ofs << "@\n" << flush;
 		}
 
-		void load( const char * filename, unsigned int ix )
+		void load( std::ifstream &ifs, int ix )
 		{
 			string line;
-
-			clear();
-
-			std::ifstream ifs ( filename, std::ifstream::binary);
 			std::istringstream iss;
 			row_t row;
 
 			while( std::getline( ifs, line, '\n' ) )
 			{
+				// "End-of-table" data-line
+				if( line[0] == '@' )
+				{
+					return;
+				}
+
 				row.clear();
 				iss.str( line );
 				field_t word;
-				while( std::getline( iss, word, '~' ) )
+				while( std::getline( iss, word, '\t' ) )
 				{
 					row.push_back(word);
 				}
 
-				iss.clear();		
-
-				if( row.size() > ix )
+				if( row.size() > (size_t)(ix) )
 				{
 					insert( row, ix );
 				}
+
+				iss.clear();		
 			}
 		}
 
@@ -388,12 +497,81 @@ public:
 	
 	void create_table( field_t name, fields_t columns )
 	{
-		_tables[name] = new table( columns );
+		_tables[name] = new table( name, columns );
 	}
 	
 	table& operator[]( field_t name )
 	{
 		return *(_tables[name]);
+	}
+
+	void store( const char * filename )
+	{
+		ofstream ofs ( filename, std::ofstream::binary );
+
+		for( auto t : _tables )
+		{
+			if( t.first.length() > 0 )
+			{
+				// Write table name
+				ofs << '~' << t.first;
+
+				ofs << '~' << t.second->_ix;
+
+				for( auto cols : t.second->_r_fields )
+					ofs << '~' << cols.second;
+
+				ofs << '\n';
+
+				t.second->store( ofs );				
+			}
+
+			ofs << flush;
+		}
+	}
+
+	void load( const char * filename )
+	{
+		string line;
+
+		_tables.clear();
+
+		std::ifstream ifs ( filename, std::ifstream::binary);
+		std::istringstream iss;
+		row_t row;
+
+		while( std::getline( ifs, line, '\n' ) )
+		{
+			// Create table from file
+			if( line[0] == '~' )
+			{
+				iss.clear();			
+		
+				iss.str( line.substr(1) );
+				fields_t flds;
+				field_t  name;
+				field_t  ix;
+				field_t  column;
+
+				// Get table name
+				std::getline( iss, name, '~' );
+
+				// Get index count
+				std::getline( iss, ix, '~' );
+
+				// Get column names
+				while( std::getline( iss, column, '~' ) )
+				{
+					flds.push_back( column );
+				}
+				
+				// Create table
+				create_table( name, flds );
+
+				// Load in table data
+				_tables[name]->load( ifs, atoi(ix.c_str()) );
+			}
+		}
 	}
 	
 private:
