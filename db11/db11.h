@@ -78,9 +78,9 @@ public:
 
 	public:
 
-		field_t operator()(int row, field_t name, field_t fld );
-		unsigned int field( std::string fld );
-		unsigned int field( std::string name, std::string fld );
+		field_t operator()(int row, std::pair<std::string, std::string> look );
+		int field( std::string fld );
+		int field( std::string name, std::string fld );
 		unsigned int count();
 		row_t& get_row( unsigned int x );
 		result greater_than( const char* fld, const char* val );
@@ -104,7 +104,7 @@ public:
 		std::vector< std::tuple< field_t, int, int > > operations;
 	public:
 		inner( result& r1, result& r2 );
-		inner& equal( std::string lv, std::string rv );
+		inner& equal( std::pair<std::string, std::string> lv, std::pair<std::string, std::string> rv );
 		inner& equal( int lv, int rv );
 		result join();
 	};

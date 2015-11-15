@@ -41,12 +41,21 @@ void db11::result::add_column_names( named_columns_t columns )
 	//_cols = col_count;
 }
 
-db11::field_t db11::result::operator()(int row, field_t name, field_t fld )
-{
-	return get_row( row )[field(name, fld)];
+db11::field_t db11::result::operator()(int row, std::pair<std::string, std::string> look )
+{	
+	if( results.size() > row )
+	{
+		row_t &r = get_row( row );
+		int f = field(look.first, look.second);
+		if( f >= 0 )
+			return r[f];
+	}
+	
+	field_t tmp;
+	return tmp;
 }
 
-unsigned int db11::result::field( std::string fld )
+int db11::result::field( std::string fld )
 {
 	for( auto a : _columns )
 	{
@@ -57,10 +66,10 @@ unsigned int db11::result::field( std::string fld )
 		}
 	}
 
-	return 0;
+	return -1;
 }
 
-unsigned int db11::result::field( std::string name, std::string fld )
+int db11::result::field( std::string name, std::string fld )
 {
 	auto a = _columns.find( name );
 	if( a != _columns.end() )
@@ -72,7 +81,7 @@ unsigned int db11::result::field( std::string name, std::string fld )
 		}
 	}
 
-	return 0;
+	return -1;
 }
 
 unsigned int db11::result::count()

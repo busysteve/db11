@@ -9,10 +9,10 @@ db11::inner::inner( result& r1, result& r2 )
 {
 }
 
-db11::inner& db11::inner::equal( std::string lv, std::string rv )
+db11::inner& db11::inner::equal( std::pair<std::string, std::string> lv, std::pair<std::string, std::string> rv )
 {
 
-	operations.push_back( std::make_tuple("eq", _r1._columns[lv], _r2._columns[rv] ) );
+	operations.push_back( std::make_tuple("eq", _r1._columns[lv.first][lv.second], _r2._columns[rv.first][rv.second] ) );
 
 	return *this;
 }
