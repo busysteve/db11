@@ -109,7 +109,7 @@ db11::id_t db11::table::insert( db11::columns_t flds, db11::row_t data  )
 
 	row_t row;
 
-	for( int i = 0; i < _r_fields.size(); i++  )
+	for( unsigned int i = 0; i < _r_fields.size(); i++  )
 	{
 		auto f = _r_fields[i];
 
