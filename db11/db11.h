@@ -116,13 +116,14 @@ public:
 		columns_t                _fields;
 		r_columns_t              _r_fields;
 		int                      _cols;
+		columns_t                _auto_inc;
 		field_t                  _name;
 		id_t			 _ix;
 
 	public:
 
 		table( field_t name, fields_t fields );
-		
+		void auto_increment( fields_t flds );
 		void create_index( fields_t flds );
 		result operator[]( ids_t &ids );
 		//result operator[]( field_t name );

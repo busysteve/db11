@@ -107,7 +107,47 @@ db11::id_t db11::table::insert( db11::columns_t flds, db11::row_t data  )
 		}
 	}
 
-	_table.insert( std::make_pair( _id, data) );
+	row_t row;
+
+	for( int i = 0; i < _r_fields.size(); i++  )
+	{
+		auto f = _r_fields[i];
+
+		auto fi = flds.find( f );
+
+		if( fi != flds.end() )
+		{
+			row.push_back(data[fi->second]);
+			
+			auto a = _auto_inc.find( f );
+
+			if( a != _auto_inc.end() )
+			{
+				int t = atoi( data[fi->second].c_str() );
+
+				if( t > a->second )
+					a->second = t;
+			}
+		}
+		else
+		{
+			auto a = _auto_inc.find( f );
+
+			if( a != _auto_inc.end() )
+			{
+				a->second++;
+				char auto_num[20];
+				sprintf( auto_num, "%d", a->second );
+				row.push_back(auto_num);
+			}
+			else
+			{
+				row.push_back(temp);
+			}
+		}
+	}
+
+	_table.insert( std::make_pair( _id, row) );
 
 	return _id++;
 }
@@ -116,6 +156,12 @@ void db11::table::create_index( db11::fields_t flds )
 {
 	_idxs[flds] = new index();
 	_idxs[flds]->build(flds, _fields, _table);
+}
+
+void db11::table::auto_increment( db11::fields_t flds )
+{
+	for( auto f : flds )
+		_auto_inc[f] = 1;
 }
 
 void db11::table::store( std::ofstream& ofs )
