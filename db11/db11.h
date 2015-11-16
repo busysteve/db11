@@ -3,7 +3,6 @@
 #define __DB11
 
 #include <map>
-#include <unordered_map>
 #include <tuple>
 #include <vector>
 #include <string>
@@ -12,6 +11,9 @@
 #include <sstream>
 #include <utility>
 #include <iostream>
+#include <algorithm>
+#include <functional>
+#include <unordered_map>
 #include <cstdlib>
 
 
@@ -78,7 +80,7 @@ public:
 
 	public:
 
-		field_t operator()(int row, std::pair<std::string, std::string> look );
+		field_t operator()(unsigned int row, std::pair<std::string, std::string> look );
 		int field( std::string fld );
 		int field( std::string name, std::string fld );
 		unsigned int count();
@@ -91,6 +93,8 @@ public:
 		result less_than( int field, const char *value );
 		result greater_than_equal( int field, const char * value );
 		result less_than_equal( int field, const char* value );
+		result& order_alpha( std::pair<std::string, std::string> fld );
+		result& order_num( std::pair<std::string, std::string> fld );
 		row_t& operator[]( unsigned int x );
 
 	private:
