@@ -41,7 +41,7 @@ void db11::result::add_column_names( named_columns_t columns )
 	//_cols = col_count;
 }
 
-db11::field_t db11::result::operator()(int row, std::pair<std::string, std::string> look )
+db11::field_t db11::result::operator()(unsigned int row, std::pair<std::string, std::string> look )
 {	
 	if( results.size() > row )
 	{
@@ -164,6 +164,24 @@ db11::result db11::result::less_than_equal( int field, const char* value )
 			rs.add_row( r );
 	}
 	return rs;
+}
+		
+db11::result& db11::result::order_alpha( std::pair<std::string, std::string> fld )
+{	
+	int f = field( fld.first, fld.second );
+	
+	std::sort( results.begin(), results.end(), [=]( row_t a, row_t b ) { return a[f] < b[f]; } );
+	
+	return *this;
+}
+		
+db11::result& db11::result::order_num( std::pair<std::string, std::string> fld )
+{
+	int f = field( fld.first, fld.second );
+	
+	std::sort( results.begin(), results.end(), [=]( row_t a, row_t b) { return atoi( a[f].c_str() ) < atoi( b[f].c_str() ); } );
+	
+	return *this;
 }
 		
 db11::row_t& db11::result::operator[]( unsigned int x )
