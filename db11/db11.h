@@ -14,11 +14,13 @@
 #include <algorithm>
 #include <functional>
 #include <unordered_map>
+#include <mutex>
 #include <cstdlib>
 
 
 class db11
 {
+	std::mutex	db_mutex;
 public:
 	typedef std::string                  field_t;
 	typedef unsigned long                id_t;
@@ -34,6 +36,8 @@ public:
 	typedef std::unordered_map< field_t, columns_t >  named_columns_t;
 	//typedef std::tuple<field_t, field_t, field_t, field_t, field_t, field_t, field_t> lookup_t;
 	typedef std::vector<field_t>         lookup_t;
+
+	static std::pair<std::string, std::string> field(std::string t, std::string c){ return std::make_pair(t,c);}
 
 	class result;
 	class table;
@@ -123,6 +127,7 @@ public:
 		columns_t                _auto_inc;
 		field_t                  _name;
 		id_t			 _ix;
+		std::mutex               _table_mutex;
 
 	public:
 
@@ -133,6 +138,7 @@ public:
 		//result operator[]( field_t name );
 		result get_data( ids_t &ids );
 		id_t insert( row_t data  );
+		id_t insert( fields_t flds, row_t data  );
 		id_t insert( columns_t flds, row_t data  );
 		ids_t get_ids( fields_t flds, idx_t key );
 		void store( std::ofstream& ofs );

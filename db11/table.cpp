@@ -22,6 +22,8 @@ db11::result db11::table::operator[]( ids_t &ids )
 
 db11::ids_t db11::table::get_ids( lookup_t flds, idx_t key )
 {
+	std::lock_guard<std::mutex> lock( _table_mutex );
+
 	// TODO: check for pointer
 
 	auto pix = _idxs[flds];
@@ -31,7 +33,8 @@ db11::ids_t db11::table::get_ids( lookup_t flds, idx_t key )
 	{
 		ids = pix->lookup_id( key );
 	}
-
+	//else std::cout << "No usable index found" << std::endl;
+	
 
 	return ids;
 }
@@ -45,6 +48,8 @@ result operator[]( field_t name )
 
 db11::result db11::table::get_data( db11::ids_t &ids )
 {
+	std::lock_guard<std::mutex> lock( _table_mutex );
+
 	result rs;
 
 	rs.set_column_names( _name, _fields );
@@ -65,48 +70,38 @@ db11::id_t db11::table::insert( db11::row_t data  )
 	return db11::table::insert( _fields, data );
 }
 
+db11::id_t db11::table::insert( fields_t flds, db11::row_t data  )
+{
+	columns_t cols;
+
+	int i = 0;
+	for( auto f : flds )
+	{
+		auto c = _fields.find( f );
+	
+		if( c != _fields.end() )
+		{
+			cols[c->first] = i++;
+		}
+		else
+		{
+			return 0;
+		}
+	}
+
+	return db11::table::insert( cols, data );
+}
+
 db11::id_t db11::table::insert( db11::columns_t flds, db11::row_t data  )
 {
+	std::lock_guard<std::mutex> lock( _table_mutex );
+
 	field_t temp("");
 
 	if( data.size() != flds.size() )
 		return 0L;
 
 	ids_t ids;
-		
-	for( auto ix : _idxs )
-	{
-		lookup_t key;
-
-		bool key_match = false;
-
-		for( auto i : ix.first )
-		{
-			auto f = flds.find( i );
-
-			if( f != flds.end() )
-			{
-				key.push_back( data[ f->second ] );
-				key_match = true;
-			}
-			else
-			{
-				key_match = false;
-				break;
-			}
-		}
-
-		if( key_match )
-		{
-			ids = ix.second->lookup_id( key );
-		
-			if( ids.size() != 0L ) 
-				; // Not unique
-		
-			ix.second->insert_id( key, _id );
-		}
-	}
-
 	row_t row;
 
 	for( unsigned int i = 0; i < _r_fields.size(); i++  )
@@ -146,8 +141,43 @@ db11::id_t db11::table::insert( db11::columns_t flds, db11::row_t data  )
 			}
 		}
 	}
+	
+		
+	for( auto ix : _idxs )
+	{
+		lookup_t key;
 
-	_table.insert( std::make_pair( _id, row) );
+		bool key_match = false;
+
+		for( auto i : ix.first )
+		{
+			auto f = _fields.find( i );
+
+			if( f != flds.end() )
+			{
+				key.push_back( row[ f->second ] );
+				key_match = true;
+			}
+			else
+			{
+				key_match = false;
+				break;
+			}
+		}
+
+		if( key_match )
+		{
+			ids = ix.second->lookup_id( key );
+		
+			if( ids.size() != 0L ) 
+				; // Not unique
+		
+			ix.second->insert_id( key, _id );
+		}
+	}
+
+
+	_table.insert( std::make_pair( _id, row ) );
 
 	return _id++;
 }
@@ -161,11 +191,13 @@ void db11::table::create_index( db11::fields_t flds )
 void db11::table::auto_increment( db11::fields_t flds )
 {
 	for( auto f : flds )
-		_auto_inc[f] = 1;
+		_auto_inc[f] = 0;
 }
 
 void db11::table::store( std::ofstream& ofs )
 {
+	std::lock_guard<std::mutex> lock( _table_mutex );
+
 	for( auto row : _table )
 	{
 		std::string str;
@@ -186,6 +218,8 @@ void db11::table::store( std::ofstream& ofs )
 
 void db11::table::load( std::ifstream &ifs, int ix )
 {
+	std::lock_guard<std::mutex> lock( _table_mutex );
+
 	std::string line;
 	std::istringstream iss;
 	row_t row;
@@ -217,6 +251,8 @@ void db11::table::load( std::ifstream &ifs, int ix )
 
 void db11::table::clear()
 {
+	std::lock_guard<std::mutex> lock( _table_mutex );
+
 	_idxs.clear();
 	_table.clear();
 }
