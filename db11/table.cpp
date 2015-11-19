@@ -1,6 +1,7 @@
 
 #include "db11.h"
 
+
 db11::table::table( field_t name, fields_t fields )
 {
 	_name = name;
@@ -59,7 +60,7 @@ db11::result db11::table::get_data( db11::ids_t &ids )
 		auto range = _table.equal_range(id);
 
 		for( auto it = range.first; it != range.second; it++ )
-			rs.add_row( it->second );
+			rs.add_row( _table._data[it->second] );
 	}
 	
 	return rs;
@@ -202,7 +203,7 @@ void db11::table::store( std::ofstream& ofs )
 	{
 		std::string str;
 
-		for( auto field : row.second )
+		for( auto field : _table._data[row.second] )
 		{
 			str += field + '\t';
 		}

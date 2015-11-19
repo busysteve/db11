@@ -11,7 +11,7 @@ int db11::index::build( db11::fields_t flds, db11::columns_t  cols, db11::table_
 	
 	int count = 0;
 	
-	for( auto r : tab )
+	for( auto r : tab._data_ref )
 	{
 		id_t id = r.first;
 		
@@ -19,7 +19,8 @@ int db11::index::build( db11::fields_t flds, db11::columns_t  cols, db11::table_
 		
 		for( auto f : flds )
 		{
-			key.push_back( r.second[ cols[f] ] );
+			auto c = cols[f];
+			key.push_back( tab._data[r.second][c] );
 		}
 		
 		idxs.insert( std::make_pair( key, id ) );

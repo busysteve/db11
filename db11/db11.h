@@ -22,14 +22,58 @@ class db11
 {
 	std::mutex	db_mutex;
 public:
+	class result;
+	class table;
+	class index;
+	class inner;
+	class left;
+	
 	typedef std::string                  field_t;
 	typedef unsigned long                id_t;
 	typedef std::vector<id_t>            ids_t;
 	typedef std::vector<field_t>         row_t;
 	typedef row_t                        fields_t;
-	typedef std::multimap<id_t,row_t>    table_t;
-	typedef std::map< field_t, table_t > tables_t;
 	typedef std::vector<row_t>           result_t;
+	
+	typedef class table_c
+	{
+		friend                       index;
+		friend                       result;
+		friend                       table;
+		
+		result_t                     _data;
+		std::multimap<id_t,size_t>   _data_ref;
+	public:
+		std::multimap<id_t,size_t>::iterator 
+		begin()
+		{
+			return _data_ref.begin();
+		}
+		std::multimap<id_t,size_t>::iterator 
+		end()
+		{
+			return _data_ref.end();
+		}
+		std::pair< std::multimap<id_t,size_t>::iterator, std::multimap<id_t,size_t>::iterator > 
+		equal_range(id_t id)
+		{
+			return _data_ref.equal_range(id);
+		}
+		void insert( std::pair<id_t, row_t> in_put )
+		{
+			_data_ref.insert( std::make_pair(in_put.first, _data.size() ) );
+			_data.push_back(in_put.second);
+		}
+		void clear()
+		{
+			_data_ref.clear();
+			_data.clear();
+		}
+	} table_t;
+	
+	
+	//typedef std::multimap<id_t,size_t>   table_t;
+	typedef std::map< field_t, table_t > tables_t;
 	typedef std::vector<field_t>         idx_t;
 	typedef std::unordered_map< field_t, int >     columns_t;
 	typedef std::map< int, field_t >     r_columns_t;  // Used for ordered reverse lookup on storage
@@ -39,11 +83,6 @@ public:
 
 	static std::pair<std::string, std::string> field(std::string t, std::string c){ return std::make_pair(t,c);}
 
-	class result;
-	class table;
-	class index;
-	class inner;
-	class left;
 
 	
 	class index
@@ -121,6 +160,7 @@ public:
 	class table
 	{
 		friend                   db11;
+		
 		columns_t                _fields;
 		r_columns_t              _r_fields;
 		int                      _cols;
