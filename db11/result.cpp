@@ -3,6 +3,19 @@
 #include "db11.h"
 
 
+db11::result::result()
+{
+}
+
+db11::result::result( result_t rs )
+{
+	results = rs;
+}
+
+db11::result::result( table &tb )
+{
+	results = tb._table._data;
+}
 
 void db11::result::add_row( row_t row )
 {
