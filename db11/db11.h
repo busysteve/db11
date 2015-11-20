@@ -123,6 +123,9 @@ public:
 
 	public:
 
+		result();
+		result( result_t rs );
+		result( table &tb );
 		field_t operator()(unsigned int row, std::pair<std::string, std::string> look );
 		int field( std::string fld );
 		int field( std::string name, std::string fld );
