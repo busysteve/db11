@@ -93,6 +93,11 @@ int main()
 	db11::result r4 = ijn.join();
 	dump_results( r4 ); 
 	
+	// Select all books from books table and display them
+	db11::result r5( db["books"] );
+	dump_results( r5 ); 
+	
+	
 
 	db.store( "books_data.db11" );
 
