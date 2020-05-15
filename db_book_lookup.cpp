@@ -64,7 +64,7 @@ int main()
 	r1 = db["authors"][ids];
 	dump_results( r1 );
 	
-	// Insert Books with Frank's ID
+	// Insert Books with Bruce Lee's ID
 	if( r1.count() > 0 )
 	{
 		db["books"].insert( flds{"title", "year", "authorid"}, row{ "Death Games", "1973", r1(0, db11::field("authors", "authorid") ) } );
