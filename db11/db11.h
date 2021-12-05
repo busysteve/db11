@@ -27,8 +27,9 @@ public:
 	class index;
 	class inner;
 	class left;
-	
-	typedef std::string                  field_t;
+
+    typedef std::string                  name_t;
+    typedef std::string                  field_t;
 	typedef unsigned long                id_t;
 	typedef std::vector<id_t>            ids_t;
 	typedef std::vector<field_t>         row_t;
@@ -169,7 +170,7 @@ public:
 		int                      _cols;
 		columns_t                _auto_inc;
 		field_t                  _name;
-		id_t			 _ix;
+		id_t                     _ix;
 		std::mutex               _table_mutex;
 
 	public:
@@ -185,11 +186,11 @@ public:
 		id_t insert( columns_t flds, row_t data  );
 		ids_t get_ids( fields_t flds, idx_t key );
 		void store( std::ofstream& ofs );
-		void load( std::ifstream &ifs, int ix );
+		void load( std::ifstream &ifs );
 		void clear();
 
 
-	private:
+	protected:
 		table_t _table;
 		std::map< lookup_t, index* >  _idxs;
 		id_t _id;
@@ -198,7 +199,8 @@ public:
 public:
 	
 	void create_table( field_t name, fields_t columns );
-	table& operator[]( field_t name );
+	table& operator[]( name_t name );
+    std::vector<name_t> list_tables();
 	void store( const char * filename );
 	void load( const char * filename );
 	

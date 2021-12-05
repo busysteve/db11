@@ -217,7 +217,7 @@ void db11::table::store( std::ofstream& ofs )
 	ofs << "@\n" << std::flush;
 }
 
-void db11::table::load( std::ifstream &ifs, int ix )
+void db11::table::load( std::ifstream &ifs )
 {
 	std::lock_guard<std::mutex> lock( _table_mutex );
 
@@ -241,10 +241,7 @@ void db11::table::load( std::ifstream &ifs, int ix )
 			row.push_back(word);
 		}
 
-		if( row.size() > (size_t)(ix) )
-		{
-			insert( row );
-		}
+		insert( row );
 
 		iss.clear();		
 	}
